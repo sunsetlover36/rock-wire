@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use strum::EnumDiscriminants;
+use strum::{EnumDiscriminants, EnumString};
 
 pub mod components;
 pub mod farcaster;
@@ -101,13 +101,21 @@ pub struct EntityData {
 }
 
 // -- Communication -> auth.rs, session_registry.rs, [actor] server_message.rs, [commit router] ws_router.rs, client_protocol.rs
+#[derive(Debug, Clone, Copy, EnumString, Serialize, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum AuthKind {
+    Ticket,
+    Farcaster,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TicketClaims {
+pub struct Claims {
     pub aud: String,
     pub exp: usize,
     pub sub: String,
 }
-impl TicketClaims {
+impl Claims {
     pub fn fid(&self) -> Option<u64> {
         self.sub.strip_prefix("fid:")?.parse().ok()
     }
