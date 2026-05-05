@@ -181,11 +181,18 @@ pub struct InputAction {
     pub data: InputData,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct SignalData {
+    pub name: String,
+    #[serde(default)]
+    pub data: serde_json::Value,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "t", content = "d", rename_all = "lowercase")]
 pub enum IncomingRequest {
     Input(InputAction),
-    Chat(String),
+    Signal(SignalData),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
