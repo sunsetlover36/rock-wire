@@ -38,16 +38,10 @@ pub struct Tile {
 }
 
 // -- State -> state.rs
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Position {
-    x: i64,
-    y: i64,
-}
-
 // -- Player -> ?
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerData {
-    pub position: Position,
+    pub position: components::Position,
 }
 // --
 

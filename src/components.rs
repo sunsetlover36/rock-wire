@@ -41,9 +41,3 @@ impl Vector2D {
 pub type Position = Vector2D;
 
 pub type Rotation = u8;
-
-#[derive(Clone, Debug, Copy, Serialize, Deserialize)]
-pub struct RadialArea {
-    pub position: Position,
-    pub radius: f32,
-}
