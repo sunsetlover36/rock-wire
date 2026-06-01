@@ -111,7 +111,7 @@ pub struct Claims {
 }
 impl Claims {
     pub fn fid(&self) -> Option<u64> {
-        self.sub.strip_prefix("fid:")?.parse().ok()
+        self.sub.strip_prefix("fc:")?.parse().ok()
     }
 }
 
