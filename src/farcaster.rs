@@ -53,7 +53,7 @@ pub struct CastCreatedData {
     pub object: String,
     pub hash: String,
     pub author: User,
-    pub app: UserDehydrated,
+    pub app: Option<UserDehydrated>,
     pub thread_hash: String,
 
     pub parent_hash: Option<String>,
@@ -131,7 +131,7 @@ pub struct User {
     pub experimental: Option<Experimental>,
     pub viewer_context: Option<ViewerContext>,
 
-    pub score: f64,
+    pub score: Option<f64>,
 }
 
 fn deserialize_optional_fid<'de, D>(deserializer: D) -> Result<Option<Fid>, D::Error>
@@ -211,9 +211,12 @@ pub struct ChannelDehydrated {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Location {
-    pub latitude: f64,
-    pub longitude: f64,
-    pub address: Address,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+
+    #[serde(default)]
+    pub address: Option<Address>,
+
     pub radius: Option<u64>,
 }
 
@@ -247,7 +250,7 @@ pub struct PrimaryAddresses {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthAddress {
     pub address: String,
-    pub app: UserDehydrated,
+    pub app: Option<UserDehydrated>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -346,7 +349,7 @@ pub struct Cast {
     #[serde(default)]
     pub mentioned_channels_ranges: Vec<Range>,
 
-    pub app: UserDehydrated,
+    pub app: Option<UserDehydrated>,
 
     pub author_channel_context: Option<ChannelViewerContext>,
     pub viewer_context: Option<CastViewerContext>,
@@ -472,6 +475,7 @@ pub struct GetUserByUsernameResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetUsersByFidsResponse {
     pub users: Vec<User>,
+    pub next: Option<NextCursor>,
 }
 // --
 
@@ -581,8 +585,9 @@ pub type FollowingFeedResponse = FeedResponse;
 pub struct NotificationsResponse {
     pub next: Option<NextCursor>,
 
+    // FIXME: needs type or a proper response check from Neynar
     #[serde(default)]
-    pub notifications: Vec<Notification>,
+    pub notifications: Vec<serde_json::Value>,
     pub unseen_notifications_count: u32,
 }
 
