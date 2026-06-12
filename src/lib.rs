@@ -133,7 +133,7 @@ pub struct RoomSnapshot {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WorldSnapshot {
     pub tick: u64,
-    pub rooms: HashMap<u64, RoomSnapshot>,
+    pub rooms: HashMap<String, RoomSnapshot>,
 
     // Entities
     pub despawn: Vec<u32>,
