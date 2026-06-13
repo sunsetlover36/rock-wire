@@ -1,5 +1,6 @@
 [package]
 name = "rock-wire"
+authors = ["ruburi"]
 version = "0.1.6"
 edition = "2024"
 
