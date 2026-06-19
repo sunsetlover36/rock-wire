@@ -313,6 +313,17 @@ pub struct Channel {
 
     #[serde(default)]
     pub moderator_fids: Vec<Fid>,
+
+    pub created_at: Option<String>,
+    pub description_mentioned_profiles: Option<Vec<UserDehydrated>>,
+    pub description_mentioned_profiles_ranges: Option<Vec<Range>>,
+    pub external_link: Option<ChannelExternalLink>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChannelExternalLink {
+    pub title: String,
+    pub url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -650,6 +661,69 @@ pub struct BestFriend {
 pub struct BestFriendsResponse {
     #[serde(default)]
     pub users: Vec<BestFriend>,
+    pub next: Option<NextCursor>,
+}
+// --
+
+// -- Channel responses
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChannelsResponse {
+    #[serde(default)]
+    pub channels: Vec<Channel>,
+    pub next: Option<NextCursor>,
+}
+
+pub type ActiveChannelsResponse = ChannelsResponse;
+pub type ChannelSearchResponse = ChannelsResponse;
+pub type UserChannelsResponse = ChannelsResponse;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BulkChannelsResponse {
+    #[serde(default)]
+    pub channels: Vec<Channel>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChannelResponse {
+    pub channel: Channel,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChannelMember {
+    pub object: String,
+    pub channel: Channel,
+    pub user: UserDehydrated,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChannelMembersResponse {
+    #[serde(default)]
+    pub members: Vec<ChannelMember>,
+    pub next: Option<NextCursor>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChannelFollowersResponse {
+    #[serde(default)]
+    pub users: Vec<User>,
+    pub next: Option<NextCursor>,
+}
+
+pub type RelevantChannelFollowersResponse = RelevantFollowersResponse;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChannelActivity {
+    pub object: String,
+    pub channel: Channel,
+    pub cast_count_1d: String,
+    pub cast_count_7d: String,
+    pub cast_count_30d: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrendingChannelsResponse {
+    #[serde(default)]
+    pub channels: Vec<ChannelActivity>,
     pub next: Option<NextCursor>,
 }
 // --
@@ -1023,6 +1097,20 @@ pub struct FollowUserParams {
 }
 
 pub type UnfollowUserParams = FollowUserParams;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FollowChannelParams {
+    pub channel_id: String,
+    pub signer_uuid: String,
+}
+pub type UnfollowChannelParams = FollowChannelParams;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FollowChannelResponse {
+    pub message: String,
+    pub success: bool,
+}
+pub type UnfollowChannelResponse = FollowChannelResponse;
 // --
 
 // -- Followers and following
@@ -1179,6 +1267,233 @@ fn validate_follow_page(
         return Err("limit must be between 1 and 100");
     }
     Ok(())
+}
+// --
+
+// -- Channels
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Hash, AsRefStr)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum ChannelIdentifierType {
+    Id,
+    ParentUrl,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Hash, AsRefStr)]
+pub enum ChannelTrendingTimeWindow {
+    #[serde(rename = "1d")]
+    #[strum(serialize = "1d")]
+    OneDay,
+    #[serde(rename = "7d")]
+    #[strum(serialize = "7d")]
+    SevenDays,
+    #[serde(rename = "30d")]
+    #[strum(serialize = "30d")]
+    ThirtyDays,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ListChannelsParams {
+    pub limit: Option<u16>,
+    pub cursor: Option<String>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetUsersActiveChannelsParams {
+    pub fid: Fid,
+    pub limit: Option<u8>,
+    pub cursor: Option<String>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchChannelsParams {
+    pub q: String,
+    pub limit: Option<u16>,
+    pub cursor: Option<String>,
+    pub viewer_fid: Option<Fid>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BulkChannelsParams {
+    pub ids: Vec<String>,
+    #[serde(rename = "type")]
+    pub id_type: Option<ChannelIdentifierType>,
+    pub viewer_fid: Option<Fid>,
+}
+#[derive(Debug, Clone, Serialize)]
+pub struct BulkChannelsRawQuery {
+    pub ids: String,
+    #[serde(rename = "type")]
+    pub id_type: Option<ChannelIdentifierType>,
+    pub viewer_fid: Option<Fid>,
+}
+impl From<&BulkChannelsParams> for BulkChannelsRawQuery {
+    fn from(p: &BulkChannelsParams) -> Self {
+        Self {
+            ids: p.ids.join(","),
+            id_type: p.id_type,
+            viewer_fid: p.viewer_fid,
+        }
+    }
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetChannelParams {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub id_type: Option<ChannelIdentifierType>,
+    pub viewer_fid: Option<Fid>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetChannelMembersParams {
+    pub channel_id: String,
+    pub fid: Option<Fid>,
+    pub limit: Option<u8>,
+    pub cursor: Option<String>,
+    #[serde(default, skip_serializing)]
+    pub experimental: bool,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetChannelFollowersParams {
+    pub id: String,
+    pub viewer_fid: Option<Fid>,
+    pub cursor: Option<String>,
+    pub limit: Option<u16>,
+    #[serde(default, skip_serializing)]
+    pub experimental: bool,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetRelevantChannelFollowersParams {
+    pub id: String,
+    pub viewer_fid: Fid,
+    #[serde(default, skip_serializing)]
+    pub experimental: bool,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetUserChannelsParams {
+    pub fid: Fid,
+    pub limit: Option<u8>,
+    pub cursor: Option<String>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetUserChannelMembershipsParams {
+    pub fid: Fid,
+    pub limit: Option<u8>,
+    pub cursor: Option<String>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetTrendingChannelsParams {
+    pub time_window: Option<ChannelTrendingTimeWindow>,
+    pub limit: Option<u8>,
+    pub cursor: Option<String>,
+}
+
+macro_rules! validate_channel_params {
+    ($self:expr, $limit:expr) => {{
+        if $self
+            .limit
+            .is_some_and(|limit| !(1..=$limit).contains(&limit))
+        {
+            return Err("limit is out of range");
+        }
+        Ok(())
+    }};
+}
+impl ListChannelsParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        validate_channel_params!(self, 200)
+    }
+}
+impl GetUsersActiveChannelsParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.fid == 0 {
+            return Err("fid must be positive");
+        }
+        validate_channel_params!(self, 100)
+    }
+}
+impl SearchChannelsParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.q.is_empty() {
+            return Err("q must not be empty");
+        }
+        if self.viewer_fid == Some(0) {
+            return Err("viewer_fid must be positive");
+        }
+        validate_channel_params!(self, 200)
+    }
+}
+impl BulkChannelsParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.ids.is_empty() || self.ids.len() > 100 {
+            return Err("ids must contain between 1 and 100 identifiers");
+        }
+        if self.viewer_fid == Some(0) {
+            return Err("viewer_fid must be positive");
+        }
+        Ok(())
+    }
+}
+impl GetChannelParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.id.is_empty() {
+            return Err("id must not be empty");
+        }
+        if self.viewer_fid == Some(0) {
+            return Err("viewer_fid must be positive");
+        }
+        Ok(())
+    }
+}
+impl GetChannelMembersParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.channel_id.is_empty() {
+            return Err("channel_id must not be empty");
+        }
+        if self.fid == Some(0) {
+            return Err("fid must be positive");
+        }
+        validate_channel_params!(self, 100)
+    }
+}
+impl GetChannelFollowersParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.id.is_empty() {
+            return Err("id must not be empty");
+        }
+        if self.viewer_fid == Some(0) {
+            return Err("viewer_fid must be positive");
+        }
+        validate_channel_params!(self, 1000)
+    }
+}
+impl GetRelevantChannelFollowersParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.id.is_empty() {
+            return Err("id must not be empty");
+        }
+        if self.viewer_fid == 0 {
+            return Err("viewer_fid must be positive");
+        }
+        Ok(())
+    }
+}
+impl GetUserChannelsParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.fid == 0 {
+            return Err("fid must be positive");
+        }
+        validate_channel_params!(self, 100)
+    }
+}
+impl GetUserChannelMembershipsParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.fid == 0 {
+            return Err("fid must be positive");
+        }
+        validate_channel_params!(self, 100)
+    }
+}
+impl GetTrendingChannelsParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        validate_channel_params!(self, 25)
+    }
 }
 // --
 
