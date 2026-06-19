@@ -424,6 +424,19 @@ pub struct ReactionsResponse {
     #[serde(default)]
     pub reactions: Vec<Reaction>,
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReactionWithCastInfo {
+    pub reaction_timestamp: String,
+    pub user: User,
+    pub cast: Cast,
+    pub app: Option<UserDehydrated>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserReactionsResponse {
+    pub next: Option<NextCursor>,
+    #[serde(default)]
+    pub reactions: Vec<ReactionWithCastInfo>,
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Hash, AsRefStr)]
 #[serde(rename_all = "lowercase")]
@@ -1086,6 +1099,42 @@ pub struct GetUserCastsParams {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub channel_id: Option<String>,
+}
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Hash, AsRefStr)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum RepliesAndRecastsFilter {
+    Replies,
+    Recasts,
+    All,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetUserRepliesAndRecastsParams {
+    pub fid: Fid,
+    pub filter: Option<RepliesAndRecastsFilter>,
+    pub limit: Option<u8>,
+    pub cursor: Option<String>,
+    pub viewer_fid: Option<Fid>,
+}
+pub type UserRepliesAndRecastsResponse = FeedResponse;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetUserPopularCastsParams {
+    pub fid: Fid,
+    pub viewer_fid: Option<Fid>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserPopularCastsResponse {
+    #[serde(default)]
+    pub casts: Vec<Cast>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetUserReactionsParams {
+    pub fid: Fid,
+    pub viewer_fid: Option<Fid>,
+    #[serde(rename = "type")]
+    pub reaction_type: ReactionFilter,
+    pub limit: Option<u8>,
+    pub cursor: Option<String>,
 }
 // --
 
@@ -1983,6 +2032,17 @@ pub struct GetNotificationsParams {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cursor: Option<String>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MarkNotificationsSeenParams {
+    pub signer_uuid: String,
+    #[serde(rename = "type")]
+    pub kind: Option<NotificationFilterKind>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MarkNotificationsSeenResponse {
+    pub message: String,
+    pub success: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
