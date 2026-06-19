@@ -578,6 +578,9 @@ pub struct FeedResponse {
 
 pub type ForYouFeedResponse = FeedResponse;
 pub type FollowingFeedResponse = FeedResponse;
+pub type FilteredFeedResponse = FeedResponse;
+pub type TrendingFeedResponse = FeedResponse;
+pub type ChannelFeedResponse = FeedResponse;
 // --
 
 // -- Notifications response
@@ -980,6 +983,399 @@ pub struct GetFollowingFeedParams {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cursor: Option<String>,
+}
+
+// -- Filtered feed
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Hash, AsRefStr)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum FeedFilterKind {
+    Fids,
+    ParentUrl,
+    ChannelId,
+    EmbedUrl,
+    EmbedTypes,
+    GlobalTrending,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Hash, AsRefStr)]
+pub enum EmbedType {
+    #[serde(rename = "text")]
+    #[strum(serialize = "text")]
+    Text,
+    #[serde(rename = "image")]
+    #[strum(serialize = "image")]
+    Image,
+    #[serde(rename = "video")]
+    #[strum(serialize = "video")]
+    Video,
+    #[serde(rename = "audio")]
+    #[strum(serialize = "audio")]
+    Audio,
+    #[serde(rename = "text/html")]
+    #[strum(serialize = "text/html")]
+    TextHtml,
+    #[serde(rename = "text/plain")]
+    #[strum(serialize = "text/plain")]
+    TextPlain,
+    #[serde(rename = "image/jpeg")]
+    #[strum(serialize = "image/jpeg")]
+    ImageJpeg,
+    #[serde(rename = "image/png")]
+    #[strum(serialize = "image/png")]
+    ImagePng,
+    #[serde(rename = "image/gif")]
+    #[strum(serialize = "image/gif")]
+    ImageGif,
+    #[serde(rename = "image/webp")]
+    #[strum(serialize = "image/webp")]
+    ImageWebp,
+    #[serde(rename = "image/svg+xml")]
+    #[strum(serialize = "image/svg+xml")]
+    ImageSvgXml,
+    #[serde(rename = "image/heif")]
+    #[strum(serialize = "image/heif")]
+    ImageHeif,
+    #[serde(rename = "video/mp4")]
+    #[strum(serialize = "video/mp4")]
+    VideoMp4,
+    #[serde(rename = "video/quicktime")]
+    #[strum(serialize = "video/quicktime")]
+    VideoQuicktime,
+    #[serde(rename = "audio/mpeg")]
+    #[strum(serialize = "audio/mpeg")]
+    AudioMpeg,
+    #[serde(rename = "application/pdf")]
+    #[strum(serialize = "application/pdf")]
+    ApplicationPdf,
+    #[serde(rename = "application/json")]
+    #[strum(serialize = "application/json")]
+    ApplicationJson,
+    #[serde(rename = "application/x-mpegurl")]
+    #[strum(serialize = "application/x-mpegurl")]
+    ApplicationXMpegurl,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "filter_type", rename_all = "snake_case")]
+pub enum FeedFilter {
+    Fids {
+        fids: Vec<Fid>,
+    },
+    ParentUrl {
+        parent_url: String,
+    },
+    ChannelId {
+        channel_id: String,
+
+        #[serde(skip_serializing_if = "Option::is_none")]
+        members_only: Option<bool>,
+    },
+    EmbedUrl {
+        embed_url: String,
+    },
+    EmbedTypes {
+        embed_types: Vec<EmbedType>,
+    },
+    GlobalTrending,
+}
+impl FeedFilter {
+    pub fn kind(&self) -> FeedFilterKind {
+        match self {
+            Self::Fids { .. } => FeedFilterKind::Fids,
+            Self::ParentUrl { .. } => FeedFilterKind::ParentUrl,
+            Self::ChannelId { .. } => FeedFilterKind::ChannelId,
+            Self::EmbedUrl { .. } => FeedFilterKind::EmbedUrl,
+            Self::EmbedTypes { .. } => FeedFilterKind::EmbedTypes,
+            Self::GlobalTrending => FeedFilterKind::GlobalTrending,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetFeedByFiltersParams {
+    #[serde(flatten)]
+    pub filter: FeedFilter,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub with_recasts: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u8>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub viewer_fid: Option<Fid>,
+
+    #[serde(default, skip_serializing)]
+    pub experimental: bool,
+}
+impl GetFeedByFiltersParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        match &self.filter {
+            FeedFilter::Fids { fids } => {
+                if fids.is_empty() || fids.len() > 100 {
+                    return Err("fids must contain between 1 and 100 FIDs");
+                }
+                if fids.contains(&0) {
+                    return Err("fids must be positive");
+                }
+            }
+            FeedFilter::EmbedTypes { embed_types } if embed_types.is_empty() => {
+                return Err("embed_types must not be empty");
+            }
+            _ => {}
+        }
+        if self.limit.is_some_and(|limit| !(1..=100).contains(&limit)) {
+            return Err("limit must be between 1 and 100");
+        }
+        if self.viewer_fid == Some(0) {
+            return Err("viewer_fid must be positive");
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetFeedByFiltersRawQuery {
+    pub feed_type: &'static str,
+    pub filter_type: FeedFilterKind,
+    pub fids: Option<String>,
+    pub parent_url: Option<String>,
+    pub channel_id: Option<String>,
+    pub members_only: Option<bool>,
+    pub embed_url: Option<String>,
+    pub embed_types: Option<String>,
+    pub with_recasts: Option<bool>,
+    pub limit: Option<u8>,
+    pub cursor: Option<String>,
+    pub viewer_fid: Option<Fid>,
+}
+impl From<&GetFeedByFiltersParams> for GetFeedByFiltersRawQuery {
+    fn from(params: &GetFeedByFiltersParams) -> Self {
+        let (fids, parent_url, channel_id, members_only, embed_url, embed_types) =
+            match &params.filter {
+                FeedFilter::Fids { fids } => (
+                    Some(
+                        fids.iter()
+                            .map(ToString::to_string)
+                            .collect::<Vec<_>>()
+                            .join(","),
+                    ),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                ),
+                FeedFilter::ParentUrl { parent_url } => {
+                    (None, Some(parent_url.clone()), None, None, None, None)
+                }
+                FeedFilter::ChannelId {
+                    channel_id,
+                    members_only,
+                } => (
+                    None,
+                    None,
+                    Some(channel_id.clone()),
+                    *members_only,
+                    None,
+                    None,
+                ),
+                FeedFilter::EmbedUrl { embed_url } => {
+                    (None, None, None, None, Some(embed_url.clone()), None)
+                }
+                FeedFilter::EmbedTypes { embed_types } => (
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(
+                        embed_types
+                            .iter()
+                            .map(|embed_type| embed_type.as_ref())
+                            .collect::<Vec<_>>()
+                            .join(","),
+                    ),
+                ),
+                FeedFilter::GlobalTrending => (None, None, None, None, None, None),
+            };
+
+        Self {
+            feed_type: "filter",
+            filter_type: params.filter.kind(),
+            fids,
+            parent_url,
+            channel_id,
+            members_only,
+            embed_url,
+            embed_types,
+            with_recasts: params.with_recasts,
+            limit: params.limit,
+            cursor: params.cursor.clone(),
+            viewer_fid: params.viewer_fid,
+        }
+    }
+}
+
+// -- Trending feed
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Hash, AsRefStr)]
+pub enum TrendingTimeWindow {
+    #[serde(rename = "1h")]
+    #[strum(serialize = "1h")]
+    OneHour,
+    #[serde(rename = "6h")]
+    #[strum(serialize = "6h")]
+    SixHours,
+    #[serde(rename = "12h")]
+    #[strum(serialize = "12h")]
+    TwelveHours,
+    #[serde(rename = "24h")]
+    #[strum(serialize = "24h")]
+    TwentyFourHours,
+    #[serde(rename = "7d")]
+    #[strum(serialize = "7d")]
+    SevenDays,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Hash, AsRefStr)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum TrendingProvider {
+    Neynar,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetTrendingFeedParams {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u8>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub viewer_fid: Option<Fid>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time_window: Option<TrendingTimeWindow>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub channel_id: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_url: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<TrendingProvider>,
+
+    #[serde(default, skip_serializing)]
+    pub experimental: bool,
+}
+impl GetTrendingFeedParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.channel_id.is_some() && self.parent_url.is_some() {
+            return Err("channel_id and parent_url cannot be used together");
+        }
+        if self.time_window == Some(TrendingTimeWindow::SevenDays) && self.channel_id.is_none() {
+            return Err("time_window=7d requires channel_id");
+        }
+        if self.limit.is_some_and(|limit| !(1..=10).contains(&limit)) {
+            return Err("limit must be between 1 and 10");
+        }
+        if self.viewer_fid == Some(0) {
+            return Err("viewer_fid must be positive");
+        }
+        Ok(())
+    }
+}
+
+// -- Feed by channel IDs
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetFeedByChannelIdsParams {
+    pub channel_ids: Vec<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub with_recasts: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub viewer_fid: Option<Fid>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub with_replies: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub members_only: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fids: Option<Vec<Fid>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u8>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub should_moderate: Option<bool>,
+
+    #[serde(default, skip_serializing)]
+    pub experimental: bool,
+}
+impl GetFeedByChannelIdsParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.channel_ids.is_empty() || self.channel_ids.len() > 10 {
+            return Err("channel_ids must contain between 1 and 10 IDs");
+        }
+        if self.fids.as_ref().is_some_and(|fids| fids.len() > 10) {
+            return Err("fids must contain at most 10 FIDs");
+        }
+        if self.fids.as_ref().is_some_and(|fids| fids.contains(&0)) {
+            return Err("fids must be positive");
+        }
+        if self.limit.is_some_and(|limit| !(1..=100).contains(&limit)) {
+            return Err("limit must be between 1 and 100");
+        }
+        if self.viewer_fid == Some(0) {
+            return Err("viewer_fid must be positive");
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetFeedByChannelIdsRawQuery {
+    pub channel_ids: String,
+    pub with_recasts: Option<bool>,
+    pub viewer_fid: Option<Fid>,
+    pub with_replies: Option<bool>,
+    pub members_only: Option<bool>,
+    pub fids: Option<String>,
+    pub limit: Option<u8>,
+    pub cursor: Option<String>,
+    pub should_moderate: Option<bool>,
+}
+impl From<&GetFeedByChannelIdsParams> for GetFeedByChannelIdsRawQuery {
+    fn from(params: &GetFeedByChannelIdsParams) -> Self {
+        Self {
+            channel_ids: params.channel_ids.join(","),
+            with_recasts: params.with_recasts,
+            viewer_fid: params.viewer_fid,
+            with_replies: params.with_replies,
+            members_only: params.members_only,
+            fids: params.fids.as_ref().map(|fids| {
+                fids.iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(",")
+            }),
+            limit: params.limit,
+            cursor: params.cursor.clone(),
+            should_moderate: params.should_moderate,
+        }
+    }
 }
 // --
 
