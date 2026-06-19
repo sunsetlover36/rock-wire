@@ -255,7 +255,7 @@ pub struct AuthAddress {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VerifiedAccount {
-    pub platform: String,
+    pub platform: Option<String>,
     pub username: String,
 }
 
@@ -581,6 +581,77 @@ pub type FollowingFeedResponse = FeedResponse;
 pub type FilteredFeedResponse = FeedResponse;
 pub type TrendingFeedResponse = FeedResponse;
 pub type ChannelFeedResponse = FeedResponse;
+// --
+
+// -- Followers responses
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Follower {
+    pub object: String,
+    pub user: User,
+    pub app: Option<UserDehydrated>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FollowerDehydrated {
+    pub object: String,
+    pub user: UserDehydrated,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FollowersResponse {
+    pub next: Option<NextCursor>,
+
+    #[serde(default)]
+    pub users: Vec<Follower>,
+}
+
+pub type FollowingResponse = FollowersResponse;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RelevantFollowersResponse {
+    #[serde(default)]
+    pub all_relevant_followers_dehydrated: Vec<FollowerDehydrated>,
+
+    #[serde(default)]
+    pub top_relevant_followers_hydrated: Vec<Follower>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReciprocalFollower {
+    pub object: String,
+    pub timestamp: String,
+    pub user: User,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReciprocalFollowersResponse {
+    pub next: Option<NextCursor>,
+
+    #[serde(default)]
+    pub users: Vec<ReciprocalFollower>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FollowSuggestionsResponse {
+    pub next: Option<NextCursor>,
+
+    #[serde(default)]
+    pub users: Vec<User>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BestFriend {
+    pub fid: Fid,
+    pub mutual_affinity_score: f64,
+    pub username: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BestFriendsResponse {
+    #[serde(default)]
+    pub users: Vec<BestFriend>,
+    pub next: Option<NextCursor>,
+}
 // --
 
 // -- Notifications response
@@ -952,6 +1023,163 @@ pub struct FollowUserParams {
 }
 
 pub type UnfollowUserParams = FollowUserParams;
+// --
+
+// -- Followers and following
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Hash, AsRefStr)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum FollowSortKind {
+    DescChron,
+    Algorithmic,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetFollowersParams {
+    pub fid: Fid,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub viewer_fid: Option<Fid>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_type: Option<FollowSortKind>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u8>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+
+    #[serde(default, skip_serializing)]
+    pub experimental: bool,
+}
+impl GetFollowersParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        validate_follow_page(self.fid, self.viewer_fid, self.limit)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetRelevantFollowersParams {
+    pub target_fid: Fid,
+    pub viewer_fid: Fid,
+
+    #[serde(default, skip_serializing)]
+    pub experimental: bool,
+}
+impl GetRelevantFollowersParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.target_fid == 0 {
+            return Err("target_fid must be positive");
+        }
+        if self.viewer_fid == 0 {
+            return Err("viewer_fid must be positive");
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetReciprocalFollowersParams {
+    pub fid: Fid,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub viewer_fid: Option<Fid>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u8>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_type: Option<FollowSortKind>,
+
+    #[serde(default, skip_serializing)]
+    pub experimental: bool,
+}
+impl GetReciprocalFollowersParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        validate_follow_page(self.fid, self.viewer_fid, self.limit)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetFollowingParams {
+    pub fid: Fid,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub viewer_fid: Option<Fid>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_type: Option<FollowSortKind>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u8>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+
+    #[serde(default, skip_serializing)]
+    pub experimental: bool,
+}
+impl GetFollowingParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        validate_follow_page(self.fid, self.viewer_fid, self.limit)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetFollowSuggestionsParams {
+    pub fid: Fid,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub viewer_fid: Option<Fid>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u8>,
+
+    #[serde(default, skip_serializing)]
+    pub experimental: bool,
+}
+impl GetFollowSuggestionsParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        validate_follow_page(self.fid, self.viewer_fid, self.limit)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetBestFriendsParams {
+    pub fid: Fid,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u8>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+}
+impl GetBestFriendsParams {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        validate_follow_page(self.fid, None, self.limit)
+    }
+}
+
+fn validate_follow_page(
+    fid: Fid,
+    viewer_fid: Option<Fid>,
+    limit: Option<u8>,
+) -> Result<(), &'static str> {
+    if fid == 0 {
+        return Err("fid must be positive");
+    }
+    if viewer_fid == Some(0) {
+        return Err("viewer_fid must be positive");
+    }
+    if limit.is_some_and(|limit| !(1..=100).contains(&limit)) {
+        return Err("limit must be between 1 and 100");
+    }
+    Ok(())
+}
 // --
 
 // Feeds
