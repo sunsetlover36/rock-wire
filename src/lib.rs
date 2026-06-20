@@ -74,16 +74,7 @@ pub struct EntityData {
     pub name: Option<components::Name>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub speed: Option<components::Speed>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub owned_by: Option<components::OwnedBy>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sprite: Option<components::Sprite2D>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub char: Option<components::SpriteChar>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub position: Option<components::Position>,

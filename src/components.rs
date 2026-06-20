@@ -3,24 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::PlayerId;
 
 pub type Name = String;
-pub type Speed = u32;
 pub type OwnedBy = PlayerId;
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Sprite2D {
-    pub texture: String,
-    pub scale: Vector2D,
-    pub layer: u32,
-    pub visible: bool,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SpriteChar {
-    pub char: String,
-    pub color: String,
-    pub bg_color: Option<String>,
-    pub visible: bool,
-}
 
 #[derive(Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct Vector2D {

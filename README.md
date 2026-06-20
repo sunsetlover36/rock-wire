@@ -10,7 +10,7 @@ The crate is intentionally small and boring. It exists so ROCK servers, clients,
 
 ```toml
 [dependencies]
-rock-wire = "0.1"
+rock-wire = { git = "https://github.com/sunsetlover36/rock-wire", tag = "v0.1.9" }
 ```
 
 ## What's Inside
@@ -18,7 +18,7 @@ rock-wire = "0.1"
 - `WorldSnapshot`, `RoomSnapshot`, and entity update payloads
 - incoming client requests for input and signals
 - outgoing world, signal, and system packets
-- shared component structs such as position, sprites, ownership, and rotation
+- shared runtime component types such as position, ownership, and rotation
 - auth-related wire types
 - Farcaster response and webhook payload types
 
